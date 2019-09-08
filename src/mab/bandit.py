@@ -57,17 +57,18 @@ class UCBBandit(Bandit):
 
     def select(self):
         trial_of_arms = self._win_of_arms + self._loss_of_arms
-        avg = self._avg_reward
-        avg += np.sqrt(2*np.log(1+self._trials)/(1+trial_of_arms)) 
+        #avg = self._avg_reward
+        #avg += np.sqrt(2*np.log(1+self._trials)/(1+trial_of_arms)) 
+        avg = self._avg_reward + np.sqrt(2*np.log(1+self._trials)/(1+trial_of_arms))    # avg 指向 _avg_reward后，在对avg操作，修改了原来 _avg_reward的值
         return np.argmax(avg)
 
     def update(self, arm, reward):
         Bandit.update(self, arm, reward)
         self._trials += 1
         trials_of_arm = self._win_of_arms[arm] + self._loss_of_arms[arm]
-        self._avg_reward[arm] = ((trials_of_arm - 1)*self._avg_reward[arm]
-                            + self._win_of_arms[arm])/trials_of_arm
-
+        #self._avg_reward[arm] = ((trials_of_arm - 1)*self._avg_reward[arm]
+        #                    + self._win_of_arms[arm])/trials_of_arm
+        self._avg_reward[arm] = self._win_of_arms[arm]/trials_of_arm
 
 class EpsilonGreedyBandit(Bandit):
 
@@ -79,6 +80,15 @@ class EpsilonGreedyBandit(Bandit):
         self._min_trials =  min_trials
 
     def select(self):
+
+        # 设定当_epsilon为3时，使用朴素算法，前_min_trials回合，随机选取老虎机
+        if self._epsilon == 3 :
+            if self._trials <  self._min_trials:
+                return np.random.choice(range(len(self._win_of_arms)))
+            arm = np.argmax(self._avg_reward)
+            return arm
+
+        # 一般的Epsilon贪婪算法
         if (np.random.rand() < self._epsilon
             or self._trials <  self._min_trials):
             return np.random.choice(range(len(self._win_of_arms)))
@@ -96,13 +106,14 @@ class EpsilonGreedyBandit(Bandit):
 
 if __name__ == '__main__':
     priority = [0.15, 0.20, 0.42]
+    #priority = np.random.uniform(size = 15)
     name1, bandit_1 = "ThompsonSampling", ThompsonSamplingBandit(priority)
     name2, bandit_2 = "UCB", UCBBandit(priority)
-    name3, bandit_3 = "greedy", EpsilonGreedyBandit(priority, 0)
+    name3, bandit_3 = "epsilon0.02", EpsilonGreedyBandit(priority, 0.02)
     name5, bandit_5 = "epsilon0.05", EpsilonGreedyBandit(priority, 0.05)
     name8, bandit_8 = "random", EpsilonGreedyBandit(priority, 1)
-    name9, bandit_9 = "greedy-naive", EpsilonGreedyBandit(priority, 3)
-    t = 1000
+    name9, bandit_9 = "naive", EpsilonGreedyBandit(priority, 3,500)
+    t = 10000
     for i in range(t):
         bandit_1.simulate()
         bandit_2.simulate()
@@ -111,12 +122,12 @@ if __name__ == '__main__':
         bandit_8.simulate()
         bandit_9.simulate()
    
-    c1, = plt.plot(range(t), bandit_1.cumulative_regret_list)
-    c2, = plt.plot(range(t), bandit_2.cumulative_regret_list)
-    c3, = plt.plot(range(t), bandit_3.cumulative_regret_list)
-    c5, = plt.plot(range(t), bandit_5.cumulative_regret_list)
-    c8, = plt.plot(range(t), bandit_8.cumulative_regret_list)
-    c9, = plt.plot(range(t), bandit_9.cumulative_regret_list)
+    c1, = plt.plot(range(t), np.log10(bandit_1.cumulative_regret_list))
+    c2, = plt.plot(range(t), np.log10(bandit_2.cumulative_regret_list))
+    c3, = plt.plot(range(t), np.log10(bandit_3.cumulative_regret_list))
+    c5, = plt.plot(range(t), np.log10(bandit_5.cumulative_regret_list))
+    c8, = plt.plot(range(t), np.log10(bandit_8.cumulative_regret_list))
+    c9, = plt.plot(range(t), np.log10(bandit_9.cumulative_regret_list))
 
     plt.ylabel('cumulative regret')
     plt.xlabel('t')
